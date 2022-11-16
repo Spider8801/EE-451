@@ -1,3 +1,4 @@
+# This is the parallel version 
 
 # Python3 implementation of the above approach
 from random import randint
