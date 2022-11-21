@@ -200,7 +200,7 @@ int main() {
 
     int distances[V][V];
     int x, y;
-    ifstream in("C:\\Users\\Thiloshon\\CLionProjects\\untitled\\att48_d.txt");
+    ifstream in("att48_d.txt");
 
     if (!in) {
         cout << "Cannot open file.\n";
