@@ -1,6 +1,13 @@
 // C++ implementation of the above approach
+#include <algorithm>
 #include <bits/stdc++.h>
 #include <limits.h>
+#include <iterator> // for std::begin, std::end
+#include <vector>
+#include <sstream>
+#include <iostream>
+#include <string>
+#include <omp.h>
 
 using namespace std;
 
@@ -8,16 +15,21 @@ using namespace std;
 #define V 48
 
 // Initial population size for the algorithm
-#define POP_SIZE 10
 
-#define gen_threshold 500
+#define POP_SIZE 12
+
+#define gen_threshold 300
+
+
+int best_value = INT_MAX;
+
 
 // Structure of a GNOME
 // string defines the path traversed
 // by the salesman while the fitness value
 // of the path is stored in an integer
 struct individual {
-    string gnome;
+    vector<int> gnome;
     int fitness;
 };
 
@@ -43,7 +55,7 @@ bool repeat(string s, char ch) {
 // Mutated GNOME is a string
 // with a random interchange
 // of two genes to create variation in species
-string mutatedGene(string gnome) {
+vector<int> mutatedGene(vector<int> gnome) {
     while (true) {
         int r = rand_num(1, V);
         int r1 = rand_num(1, V);
@@ -59,30 +71,41 @@ string mutatedGene(string gnome) {
 
 // Function to return a valid GNOME string
 // required to create the population
-string create_gnome() {
+vector<int> create_gnome() {
     // TODO: Change characters to String Numbers (SHON)
-    string gnome = "0";
-    while (true) {
-        if (gnome.size() == V) {
-            gnome += gnome[0];
+    vector<int> old_gnome;
+
+    for (int h = 0; h < V + 1; h++) {
+
+        if (h == V) {
+            old_gnome.push_back(0);
             break;
         }
-        int temp = rand_num(1, V);
-        if (!repeat(gnome, (char) (temp + 48)))
-            gnome += (char) (temp + 48);
+        old_gnome.push_back(h);
     }
-    return gnome;
+
+    auto rng = std::default_random_engine{};
+    std::shuffle(std::begin(old_gnome), std::end(old_gnome), rng);
+
+    return old_gnome;
 }
 
 // Function to return the fitness value of a gnome.
 // The fitness value is the path length
 // of the path represented by the GNOME.
-int cal_fitness(string gnome, int map[V][V]) {
+
+int cal_fitness(vector<int> gnome, int map[V][V]) {
     int f = 0;
-    for (int i = 0; i < gnome.size() - 1; i++) {
-        if (map[gnome[i] - 48][gnome[i + 1] - 48] == INT_MAX)
+    for (int i = 0; i < V; i++) {
+        if (map[gnome[i]][gnome[i + 1]] == INT_MAX)
             return INT_MAX;
-        f += map[gnome[i] - 48][gnome[i + 1] - 48];
+        f += map[gnome[i]][gnome[i + 1]];
+    }
+
+
+    if (f < best_value){
+#pragma omp critical
+        best_value = f;
     }
     return f;
 }
@@ -100,13 +123,25 @@ bool lessthan(struct individual t1,
     return t1.fitness < t2.fitness;
 }
 
+
+string get_string_vector(vector<int> arr) {
+    stringstream ss;
+    copy(arr.begin(), arr.end(), ostream_iterator<int>(ss, "->"));
+    string s = ss.str();
+    s = s.substr(0, s.length() - 1);
+
+    return s;
+}
+
 // Utility function for TSP problem.
 void TSPUtil(int map[V][V]) {
+
     // Generation Number
     int gen = 1;
 
     vector<struct individual> population;
     struct individual temp;
+
 
     // Populating the GNOME pool.
     for (int i = 0; i < POP_SIZE; i++) {
@@ -115,12 +150,13 @@ void TSPUtil(int map[V][V]) {
         population.push_back(temp);
     }
 
-    cout << "\nInitial population: " << endl
-         << "GNOME	 FITNESS VALUE\n";
-    for (int i = 0; i < POP_SIZE; i++)
-        cout << population[i].gnome << " "
-             << population[i].fitness << endl;
-    cout << "\n";
+//    cout << "\nInitial population: " << endl
+//         << "GNOME	 FITNESS VALUE\n";
+//    for (int i = 0; i < POP_SIZE; i++)
+//        cout << get_string_vector(population[i].gnome) << " "
+//             << population[i].fitness << endl;
+//    cout << "\n";
+
 
     int temperature = 10000;
 
@@ -132,68 +168,80 @@ void TSPUtil(int map[V][V]) {
 
 
         // CROSSOVER
-        int crossover_point = 1 + (rand() % (V - 1));
-        string first_half = population[0].gnome.substr(0, crossover_point);
-        string second_half = "";
-        for (int i = 0; i < population[1].gnome.size(); i++) {
-            if (first_half.find(population[1].gnome[i]) == std::string::npos) {
-                second_half += population[1].gnome[i];
-            }
-        }
-        string newgenome = first_half + second_half + "0";
-        population[POP_SIZE].gnome = newgenome;
-        population[POP_SIZE].fitness = cal_fitness(population[POP_SIZE].gnome, map);
+//        int crossover_point = 1 + (rand() % (V - 1));
+//        string first_half = population[0].gnome.substr(0, crossover_point);
+//        string second_half = "";
+//        for (int i = 0; i < population[1].gnome.size(); i++) {
+//            if (first_half.find(population[1].gnome[i]) == std::string::npos) {
+//                second_half += population[1].gnome[i];
+//            }
+//        }
+//        string newgenome = first_half + second_half + "0";
+//        population[POP_SIZE].gnome = newgenome;
+//        population[POP_SIZE].fitness = cal_fitness(population[POP_SIZE].gnome, map);
+
 
         //        //Add fittest offspring to population
 
         // MUTATION
-        for (int i = 0; i < POP_SIZE; i++) {
-            struct individual p1 = population[i];
+        #pragma omp parallel num_threads(4) default(none) shared(population, map, temperature, gen, new_population)
+        {
+            int id = omp_get_thread_num();
+            //printf("%d\n", gen);
+            #pragma omp for
+            for (int i = 0; i < POP_SIZE; i++) {
+                struct individual p1 = population[i];
 
-            int tempp = 0;
+                int tempp = 0;
 
-            while (tempp < POP_SIZE * 100) {
-                tempp += 1;
+                while (tempp < POP_SIZE * 50) {
+                    tempp += 1;
 
-                //Do mutation under a random probability
-                //                if (rn.nextInt()%7 < 5) {
-                //                    demo.mutation();
-                //                }
+                    //Do mutation under a random probability
+                    //                if (rn.nextInt()%7 < 5) {
+                    //                    demo.mutation();
+                    //                }
 
-                string new_g = mutatedGene(p1.gnome);
-                struct individual new_gnome;
-                new_gnome.gnome = new_g;
-                new_gnome.fitness = cal_fitness(new_gnome.gnome, map);
+                    vector<int> new_g = mutatedGene(p1.gnome);
+                    struct individual new_gnome;
+                    new_gnome.gnome = new_g;
+                    new_gnome.fitness = cal_fitness(new_gnome.gnome, map);
 
-                if (new_gnome.fitness <= population[i].fitness) {
-                    new_population.push_back(new_gnome);
-                    break;
-                } else {
-                    // Accepting the rejected children at
-                    // a possible probability above threshold.
-                    float prob = pow(2.7,
-                                     -1 * ((float) (new_gnome.fitness
-                                                    - population[i].fitness)
-                                           / temperature));
-                    if (prob > 0.5) {
+                    if (new_gnome.fitness <= population[i].fitness) {
+                        #pragma omp critical
                         new_population.push_back(new_gnome);
                         break;
+                    } else {
+                        // Accepting the rejected children at
+                        // a possible probability above threshold.
+                        float prob = pow(2.7,
+                                         -1 * ((float) (new_gnome.fitness
+                                                        - population[i].fitness)
+                                               / temperature));
+                        if (prob > 0.5) {
+                            #pragma omp critical
+                            new_population.push_back(new_gnome);
+                            break;
+                        }
                     }
                 }
             }
+
         }
+
 
         temperature = cooldown(temperature);
         population = new_population;
-        cout << "\nGeneration " << gen << " \n";
-        cout << "\nCurrent temp: " << temperature << "\n";
-        cout << "GNOME	 FITNESS VALUE\n";
-
-        for (int i = 0; i < POP_SIZE; i++)
-            cout << population[i].gnome << " "
-                 << population[i].fitness << endl;
+//        cout << "\nGeneration " << gen << " \n";
+//        cout << "\nCurrent temp: " << temperature << "\n";
+//        cout << "GNOME	 FITNESS VALUE\n";
+//
+//        for (int i = 0; i < POP_SIZE; i++)
+//            cout << get_string_vector(population[i].gnome) << " "
+//                 << population[i].fitness << endl;
         gen++;
     }
+    cout << "\nBest Value " << best_value << " \n";
 }
 
 int main() {
