@@ -15,12 +15,14 @@ using namespace std;
 #define V 48
 
 // Initial population size for the algorithm
+
 #define POP_SIZE 12
 
 #define gen_threshold 300
 
 
 int best_value = INT_MAX;
+
 
 // Structure of a GNOME
 // string defines the path traversed
@@ -91,6 +93,7 @@ vector<int> create_gnome() {
 // Function to return the fitness value of a gnome.
 // The fitness value is the path length
 // of the path represented by the GNOME.
+
 int cal_fitness(vector<int> gnome, int map[V][V]) {
     int f = 0;
     for (int i = 0; i < V; i++) {
@@ -120,6 +123,7 @@ bool lessthan(struct individual t1,
     return t1.fitness < t2.fitness;
 }
 
+
 string get_string_vector(vector<int> arr) {
     stringstream ss;
     copy(arr.begin(), arr.end(), ostream_iterator<int>(ss, "->"));
@@ -132,14 +136,11 @@ string get_string_vector(vector<int> arr) {
 // Utility function for TSP problem.
 void TSPUtil(int map[V][V]) {
 
-
-
     // Generation Number
     int gen = 1;
 
     vector<struct individual> population;
     struct individual temp;
-
 
 
     // Populating the GNOME pool.
@@ -149,13 +150,13 @@ void TSPUtil(int map[V][V]) {
         population.push_back(temp);
     }
 
-
 //    cout << "\nInitial population: " << endl
 //         << "GNOME	 FITNESS VALUE\n";
 //    for (int i = 0; i < POP_SIZE; i++)
 //        cout << get_string_vector(population[i].gnome) << " "
 //             << population[i].fitness << endl;
 //    cout << "\n";
+
 
     int temperature = 10000;
 
@@ -178,6 +179,7 @@ void TSPUtil(int map[V][V]) {
 //        string newgenome = first_half + second_half + "0";
 //        population[POP_SIZE].gnome = newgenome;
 //        population[POP_SIZE].fitness = cal_fitness(population[POP_SIZE].gnome, map);
+
 
         //        //Add fittest offspring to population
 
