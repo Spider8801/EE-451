@@ -25,6 +25,53 @@ using namespace std::chrono;
 
 int best_value = INT_MAX;
 
+template <typename S>
+
+// with_separator() function accepts
+// two  arguments i.e., a vector and
+// a separator string
+void with_separator(const vector<S>& vec,
+                    string sep = " ")
+{
+    // Iterating over all elements of vector
+    for (auto elem : vec) {
+        cout << elem << sep;
+    }
+
+    cout << endl;
+}
+
+// Template class to slice a vector
+// from range X to Y
+template <typename T>
+vector<T> slicing(vector<T> const& v,
+                  int X, int Y)
+{
+
+    // Begin and End iterator
+    auto first = v.begin() + X;
+    auto last = v.begin() + Y + 1;
+
+    // Copy the element
+    vector<T> vector(first, last);
+
+    // Return the results
+    return vector;
+}
+
+// Template class to print the element
+// in vector v
+template <typename T>
+void printResult(vector<T> const& v)
+{
+
+    // Traverse the vector v
+    for (auto i : v) {
+        cout << i << ' ';
+    }
+    cout << '\n';
+}
+
 // Structure of a GNOME
 // string defines the path traversed
 // by the salesman while the fitness value
@@ -83,11 +130,11 @@ vector<int> create_gnome() {
             break;
         }
         old_gnome.push_back(h);
+
     }
 
     auto rng = std::default_random_engine{};
     std::shuffle(std::begin(old_gnome), std::end(old_gnome), rng);
-
     return old_gnome;
 }
 
@@ -104,7 +151,7 @@ int cal_fitness(vector<int> gnome, int map[V][V]) {
 
 
     if (f < best_value){
-#pragma omp critical
+#pragma omp critical // Where did we declare best_value as private
         best_value = f;
     }
     return f;
@@ -176,27 +223,47 @@ void TSPUtil(int map[V][V]) {
         vector<struct individual> new_population;
 
 
-        // CROSSOVER
-//        int crossover_point = 1 + (rand() % (V - 1));
-//        string first_half = population[0].gnome.substr(0, crossover_point);
-//        string second_half = "";
-//        for (int i = 0; i < population[1].gnome.size(); i++) {
-//            if (first_half.find(population[1].gnome[i]) == std::string::npos) {
-//                second_half += population[1].gnome[i];
-//            }
-//        }
-//        string newgenome = first_half + second_half + "0";
-//        population[POP_SIZE].gnome = newgenome;
-//        population[POP_SIZE].fitness = cal_fitness(population[POP_SIZE].gnome, map);
 
-        //        //Add fittest offspring to population
+
+        // CROSSOVER
+        int f=0;
+        for(int i=0; i<POP_SIZE-1; i++)
+        {
+
+            int crossover_point = 1 + (rand() % (V - 1));
+            //cout<<crossover_point<<" a";
+            //cout<< population[2].gnome.size()<<" "<<f++<<" ";
+            //with_separator(population[0].gnome, ", ");
+            vector<int> first_half, newgenome, second_half;
+
+            // Function Call
+            first_half = slicing(population[i].gnome, 0, crossover_point);
+            //cout<<first_half.size()<<" b";
+            //string first_half = population[0].gnome.substr(0, crossover_point);
+            for (int j = crossover_point+1; j < population[i+1].gnome.size()-1; j++) {
+                    second_half.push_back(population[i+1].gnome[j]);
+                            }
+            //cout<<second_half.size()<<" c";
+            newgenome.insert(newgenome.begin(), first_half.begin(), first_half.end());
+            //cout<<newgenome.size();
+            newgenome.insert(newgenome.end(), second_half.begin(), second_half.end());
+            //cout<<newgenome.size();
+            newgenome.push_back(0);
+            //newgenome.push_back(0);
+            //cout<<newgenome.size();
+            population[i].gnome = newgenome;
+            population[i].fitness = cal_fitness(population[i].gnome, map);
+
+            //        //Add fittest offspring to population
+        }
+
 
         // MUTATION
-#pragma omp parallel num_threads(4) default(none) shared(population, map, temperature, gen, new_population)
+    #pragma omp parallel num_threads(4) default(none) shared(population, map, temperature, gen, new_population)
         {
             int id = omp_get_thread_num();
             //printf("%d\n", gen);
-#pragma omp for
+    #pragma omp for
             for (int i = 0; i < POP_SIZE; i++) {
                 struct individual p1 = population[i];
 
@@ -256,7 +323,7 @@ int main() {
 
     int distances[V][V];
     int x, y;
-    ifstream in("C:\\Users\\ASUS\\CLionProjects\\TSP-GA\\att48_d.txt");
+    ifstream in("att48_d.txt");
 
     if (!in) {
         cout << "Cannot open file.\n";
@@ -277,7 +344,7 @@ int main() {
 
     auto stop = high_resolution_clock::now();
 
-    auto duration = duration_cast<microseconds>(stop - start);
+    auto duration = duration_cast<seconds>(stop - start);
 
-    cout <<"Time of execution is: "<< duration.count()<<" microseconds" << endl;
+    cout <<"Time of execution is: "<< duration.count() <<" sec"<< endl;
 }
