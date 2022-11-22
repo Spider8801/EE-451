@@ -227,43 +227,51 @@ void TSPUtil(int map[V][V]) {
 
         // CROSSOVER
         int f=0;
-        for(int i=0; i<POP_SIZE-1; i++)
+    #pragma omp parallel num_threads(4) default(none)  shared(population, map, temperature, gen, new_population)
         {
+            int id = omp_get_thread_num();
 
-            int crossover_point = 1 + (rand() % (V - 1));
-            //cout<<crossover_point<<" a";
-            //cout<< population[2].gnome.size()<<" "<<f++<<" ";
-            //with_separator(population[0].gnome, ", ");
-            vector<int> first_half, newgenome, second_half;
+        #pragma omp for
+            for(int i=0; i<POP_SIZE-1; i++)
+            {
 
-            // Function Call
-            first_half = slicing(population[i].gnome, 0, crossover_point);
-            //cout<<first_half.size()<<" b";
-            //string first_half = population[0].gnome.substr(0, crossover_point);
-            for (int j = crossover_point+1; j < population[i+1].gnome.size()-1; j++) {
+                int crossover_point = 1 + (rand() % (V - 1));
+                //cout<<crossover_point<<" a";
+                //cout<< population[2].gnome.size()<<" "<<f++<<" ";
+                //with_separator(population[0].gnome, ", ");
+                vector<int> first_half, newgenome, second_half;
+
+                // Function Call
+                first_half = slicing(population[i].gnome, 0, crossover_point);
+                //cout<<first_half.size()<<" b";
+                //string first_half = population[0].gnome.substr(0, crossover_point);
+                for (int j = crossover_point+1; j < population[i+1].gnome.size()-1; j++) {
+                #pragma omp critical
                     second_half.push_back(population[i+1].gnome[j]);
-                            }
-            //cout<<second_half.size()<<" c";
-            newgenome.insert(newgenome.begin(), first_half.begin(), first_half.end());
-            //cout<<newgenome.size();
-            newgenome.insert(newgenome.end(), second_half.begin(), second_half.end());
-            //cout<<newgenome.size();
-            newgenome.push_back(0);
-            //newgenome.push_back(0);
-            //cout<<newgenome.size();
-            population[i].gnome = newgenome;
-            population[i].fitness = cal_fitness(population[i].gnome, map);
+                }
+                //cout<<second_half.size()<<" c";
+                newgenome.insert(newgenome.begin(), first_half.begin(), first_half.end());
+                //cout<<newgenome.size();
+                newgenome.insert(newgenome.end(), second_half.begin(), second_half.end());
+                //cout<<newgenome.size();
+                #pragma omp critical
+                newgenome.push_back(0);
+                //newgenome.push_back(0);
+                //cout<<newgenome.size();
+                population[i].gnome = newgenome;
+                population[i].fitness = cal_fitness(population[i].gnome, map);
 
-            //        //Add fittest offspring to population
+                //        //Add fittest offspring to population
+            }
         }
 
 
         // MUTATION
-    #pragma omp parallel num_threads(4) default(none) shared(population, map, temperature, gen, new_population)
+#pragma omp parallel num_threads(4) default(none) shared(population, map, temperature, gen, new_population)
         {
             int id = omp_get_thread_num();
             //printf("%d\n", gen);
-    #pragma omp for
+#pragma omp for
             for (int i = 0; i < POP_SIZE; i++) {
                 struct individual p1 = population[i];
 
@@ -283,7 +291,7 @@ void TSPUtil(int map[V][V]) {
                     new_gnome.fitness = cal_fitness(new_gnome.gnome, map);
 
                     if (new_gnome.fitness <= population[i].fitness) {
-                        #pragma omp critical
+#pragma omp critical
                         new_population.push_back(new_gnome);
                         break;
                     } else {
@@ -294,7 +302,7 @@ void TSPUtil(int map[V][V]) {
                                                         - population[i].fitness)
                                                / temperature));
                         if (prob > 0.5) {
-                        #pragma omp critical
+#pragma omp critical
                             new_population.push_back(new_gnome);
                             break;
                         }
@@ -323,7 +331,7 @@ int main() {
 
     int distances[V][V];
     int x, y;
-    ifstream in("att48_d.txt");
+    ifstream in("C:\\Users\\ASUS\\CLionProjects\\TSP-GA\\att48_d.txt");
 
     if (!in) {
         cout << "Cannot open file.\n";
